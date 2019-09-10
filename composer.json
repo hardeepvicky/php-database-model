@@ -1,0 +1,9 @@
+{
+    "name": "hardeep-vicky/php-database-model",
+    "version" : "1.0",
+    "description": "Object Model for php",
+    "require": {
+        "php" : ">=5.2"
+    },
+    "minimum-stability" : "dev"
+}
