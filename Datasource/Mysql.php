@@ -49,7 +49,7 @@ class Mysql implements Datasource
         return $count > 0;
     }
     
-    private function getLastInsertId()
+    public function getLastInsertId()
     {
         return mysqli_insert_id($this->conn);
     }
@@ -116,7 +116,7 @@ class Mysql implements Datasource
         return "`" . $name . "`";
     }
     
-    protected function getFieldInfo($table)
+    public function getFieldInfo($table)
     {
         $q = "SELECT * FROM " . $this->getCleanName($table);
         

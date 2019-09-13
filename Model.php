@@ -48,7 +48,7 @@ class Model
         return $this->table;
     }
     
-    public function select(\QueryBuilder\QuerySelect $qs, $callback)
+    public function select(\QueryBuilder\QuerySelect $qs, $callback, $with = array())
     {
         if ($callback)
         {
@@ -72,6 +72,11 @@ class Model
             $records[] = array($this->className => $arr);
         }
         
+        foreach($with as $fn => $arr)
+        {
+            $this->{$fn}();
+        }
+        
         if ($this->children)
         {
             $primary_id_list = Extract::extract($records, "{n}." . $this->className . "." . $this->primaryKey);
@@ -81,7 +86,8 @@ class Model
                 $wh = $join->qs->getWhere();
                 $wh->add($join->key, $primary_id_list);
 
-                $child_records = $join->model->select($join->qs, $callback);
+                $new_with = isset($with[$alias]) ? $with[$alias] : array();
+                $child_records = $join->model->select($join->qs, $callback, $new_with);
                 foreach($records as $k => $record)
                 {
                     foreach($child_records as $ck => $child_record)
@@ -94,6 +100,7 @@ class Model
                 }
             }
         }
+
         if ($this->parents)
         {
             foreach($this->parents as $alias => $join)
@@ -103,7 +110,8 @@ class Model
                 $wh = $join->qs->getWhere();
                 $wh->add($this->primaryKey, $key_id_list);
 
-                $parent_records = $join->model->select($join->qs, $callback);
+                $new_with = isset($with[$alias]) ? $with[$alias] : array();
+                $parent_records = $join->model->select($join->qs, $callback, $new_with);
                 foreach($records as $k => $record)
                 {
                     foreach($parent_records as $ck => $parent_record)
