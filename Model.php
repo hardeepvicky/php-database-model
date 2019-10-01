@@ -2,6 +2,7 @@
 namespace PhpDatabaseModel;
 
 use PhpDatabaseModel\Datasource;
+use PhpDatabaseModel\Validation;
 
 class Model
 {
@@ -181,6 +182,11 @@ class Model
         $this->parents[$join->alias] = $join;
     }
     
+    public function createNew()
+    {
+        $this->id = NULL;
+    }
+    
     public function save($data, $callback = true)
     {
         $this->data = $data;
@@ -252,12 +258,12 @@ class Model
         
         foreach ($data as $field => $value)
         {
-            $list[] = $db->getCleanName($field) . "='" . $value . "'";
+            $list[] = $db->getCleanField($field) . "='" . $value . "'";
         }
         
         $fields = implode(", ", $list);
         
-        $q = "UPDATE " . $db->getCleanName($this->getTable()) . " SET $fields WHERE " . $wh->get();
+        $q = "UPDATE " . $db->getCleanField($this->getTable()) . " SET $fields WHERE " . $wh->get();
         
         return $db->update($q);
     }
@@ -266,7 +272,7 @@ class Model
     {
         $db = $this->getDataSource();
         
-        $q = "DELETE FROM " . $db->getCleanName($this->getTable()) . " WHERE " . $this->primaryKey . "=" . $this->id;
+        $q = "DELETE FROM " . $db->getCleanField($this->getTable()) . " WHERE " . $this->primaryKey . "=" . $this->id;
         
         return $db->delete($q);
     }
@@ -275,7 +281,7 @@ class Model
     {
         $db = $this->getDataSource();
         
-        $q = "DELETE FROM " . $db->getCleanName($this->getTable()) . " WHERE " . $wh->get();
+        $q = "DELETE FROM " . $db->getCleanField($this->getTable()) . " WHERE " . $wh->get();
         
         return $db->delete($q);
     }
@@ -288,14 +294,14 @@ class Model
         
         foreach ($data as $field => $value)
         {
-            $field_list[] = $db->getCleanName($field);
-            $value_list[] = "'" . $value . "'";
+            $field_list[] = $db->getCleanField($field);
+            $value_list[] = "'" . $db->getCleanValue($value) . "'";
         }
         
         $fields = implode(", ", $field_list);
         $values = implode(", ", $value_list);
         
-        $q = "INSERT INTO " . $db->getCleanName($this->getTable()) . "($fields)VALUES($values);";
+        $q = "INSERT INTO " . $this->getTable() . "($fields)VALUES($values);";
         
         $result = $db->insert($q);
         
@@ -312,12 +318,12 @@ class Model
         
         foreach ($data as $field => $value)
         {
-            $list[] = $db->getCleanName($field) . "='" . $value . "'";
+            $list[] = $db->getCleanField($field) . "='" . $db->getCleanValue($value) . "'";
         }
         
         $fields = implode(", ", $list);
         
-        $q = "UPDATE " . $db->getCleanName($this->getTable()) . " SET $fields WHERE " . $this->primaryKey . "=" . $this->id;
+        $q = "UPDATE " . $this->getTable() . " SET $fields WHERE " . $this->primaryKey . "=" . $this->id;
         
         return $db->update($q);
     }
@@ -330,11 +336,11 @@ class Model
         
         $this->validationErrors = [];
         
-        foreach($field_rules as $field => $rules)
+        foreach($field_rules as $field => $field_data)
         {
-            if ( isset($this->data[$field]) )
+            if ( isset($this->data[$field]) || (isset($field_data["is_required"]) && $field_data["is_required"]) )
             {
-                foreach($rules as $rule => $rule_arr)
+                foreach($field_data['rules'] as $rule => $rule_arr)
                 {
                     if (!isset($rule_arr["args"]))
                     {
@@ -365,6 +371,11 @@ class Model
                     
                     if ($will_validate)
                     {
+                        if (!isset($this->data[$field]))
+                        {
+                            $this->data[$field] = "";
+                        }
+                        
                         $vaildate_result = $validator->{$rule}($this->data[$field], $rule_arr);
 
                         if (!$vaildate_result)
@@ -384,9 +395,14 @@ class Model
         return true;
     }
     
+    protected function afterSave($new_record)
+    {
+        return true;
+    }
+    
     protected function getValidator()
     {
-        return Validation\Validator::getInstance();
+        return Validation\Validator::getInstance($this);
     }
     
     protected function getValidationRules()
@@ -399,6 +415,15 @@ class Model
         $table = $this->getTable();
         if (isset(self::$tableInfo[$table]["fields"]))
         {
+            return self::$tableInfo[$table]["fields"];
+        }
+        
+        $cache = new Cache(new CacheConfig(20, "table"));
+        $temp = $cache->read($table);
+        
+        if ($temp)
+        {
+            self::$tableInfo[$table] = $temp;
             return self::$tableInfo[$table]["fields"];
         }
         
@@ -419,6 +444,8 @@ class Model
         }
         
         self::$tableInfo[$table]["fields"] = $list;
+        
+        $cache->write($table, self::$tableInfo[$table]);
         
         return $list;
     }

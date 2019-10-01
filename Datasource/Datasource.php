@@ -11,7 +11,8 @@ interface Datasource
     public function query($q);
     public function getLogs();
     public function getInstance(Config $config);
-    public function getCleanName($name);
+    public function getCleanField($name);
+    public function getCleanValue($value);
     public function getFieldInfo($table);
     public function getLastInsertId();
     public function begin();

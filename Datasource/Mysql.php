@@ -42,7 +42,7 @@ class Mysql implements Datasource
         
         $time = microtime(true) - $st;
         $log["time_taken"] = round($time * 1000, 3);
-        $log["count"] = count($records);
+        $log["count"] = $count;
         
         $this->logs[] = $log;
         
@@ -66,6 +66,7 @@ class Mysql implements Datasource
         
         $st = microtime(true);
         
+        debug($q);
         $result = $this->query($q);
         
         $records = array();
@@ -111,14 +112,19 @@ class Mysql implements Datasource
         return self::$instance;
     }
 
-    public function getCleanName($name)
+    public function getCleanField($name)
     {
         return "`" . $name . "`";
     }
     
+    public function getCleanValue($value)
+    {
+        return mysql_real_escape_string($value);
+    }
+    
     public function getFieldInfo($table)
     {
-        $q = "SELECT * FROM " . $this->getCleanName($table);
+        $q = "SELECT * FROM " . $table;
         
         $log["type"] = "select";
         $log["query"] = $q;
@@ -127,10 +133,10 @@ class Mysql implements Datasource
         if ( $result = mysqli_query($this->conn, $q))
         {        
             $info = $result->fetch_fields();
-
+            
             $time = microtime(true) - $st;
             $log["time_taken"] = round($time * 1000, 3);
-            $log["count"] = count($records);
+            $log["count"] = count($info);
 
             $this->logs[] = $log;
 
